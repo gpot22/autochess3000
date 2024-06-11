@@ -29,6 +29,7 @@ def run():
     grid = Grid(TILE_W, grid_offset)
     p = Piece(piece_group, 'r')
     p.move_to(vec2(280, 80))
+    p.set_grid(grid)
     
     run = True
         

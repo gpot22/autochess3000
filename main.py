@@ -1,6 +1,5 @@
 from stockfish import Stockfish
 import visualizer as vz
-import time
 
 def parse_board_state(stockfish_board):
     board = []

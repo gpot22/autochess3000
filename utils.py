@@ -1,11 +1,12 @@
 import pygame
 
 class Globals():
-    COLOR_LIGHT = '#eee9d5'
-    COLOR_DARK = '#000000'
+    COLOR_LIGHT = '#f0d9b5'
+    COLOR_DARK = '#b58863'
     FONT1 = pygame.font.SysFont('mono', 16, bold=True)
     
 cursor_state = {
-    'dragging': False
+    'dragging': False,
+    'on_board': False
 }
     

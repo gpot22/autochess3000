@@ -1,31 +1,49 @@
 import pygame
 from utils import Globals, cursor_state
 
+vec2 = pygame.math.Vector2
+
 class Grid(pygame.sprite.Group):
     def __init__(self, tile_w, offset):
         pygame.sprite.Group.__init__(self)
         self.tile_w = tile_w
         self.offset = offset
         self.surf = pygame.Surface((tile_w*8, tile_w*8))
-        # self._draw()
+        self.rect = pygame.Rect(self.offset.x, self.offset.y, tile_w*8, tile_w*8)
         self.tiles = self._build()
     
     def _build(self):
         tiles = []
         for i in range(8):
+            r = []
             for j in range(8):
                 t = Tile(self, pygame.Rect(i*self.tile_w, j*self.tile_w, self.tile_w, self.tile_w), self._get_tile_colour(i, j))
-                tiles.append(t)
+                r.append(t)
                 self.surf.blit(t.image, (t.rect.x, t.rect.y))
+            tiles.append(r)
         return tiles
+
+    def ij_to_xy(self, i, j):
+        x = self.offset.x + j*self.tile_w
+        y = self.offset.y + i*self.tile_w
+        return vec2(x, y)
+
+    def xy_to_ij(self, x, y):
+        i = (y - self.offset.y) // self.tile_w
+        j = (x - self.offset.x) // self.tile_w
+        return (int(i), int(j))
                 
     def _get_tile_colour(self, i, j):
         return pygame.Color(Globals.COLOR_DARK) if (i+j)%2 else Globals.COLOR_LIGHT
     
     def update(self, events):
         super().update(events)
-        for t in self.tiles:
-            self.surf.blit(t.image, (t.rect.x, t.rect.y))
+        for ev in events:
+            if ev.type == pygame.MOUSEMOTION:
+                if self.rect.collidepoint(pygame.mouse.get_pos()):
+                    cursor_state['on_board'] = True
+                else:
+                    cursor_state['on_board'] = False
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, grid, rect, colour):
@@ -55,7 +73,6 @@ class Tile(pygame.sprite.Sprite):
     
     def highlight(self):
         x, y = self.global_rect.x, self.global_rect.y
-        # c = pygame.Color(255, 255, 255, 40)
         c = pygame.Color('gray')
         pygame.draw.rect(pygame.display.get_surface(), c, pygame.Rect(x, y, self.rect.w, self.rect.h), width=3)
         
@@ -71,6 +88,5 @@ class Tile(pygame.sprite.Sprite):
                 pos = pygame.mouse.get_pos()
                 if self.global_rect.collidepoint(pos):
                     self.hover = True
-                    # self.show_coords()
                 else:
                     self.hover = False
