@@ -37,9 +37,6 @@ def load_game(board, grid):
 def run(board):
     grid = Grid(TILE_W, grid_offset)
     load_game(board, grid)
-    # p = Piece(piece_group, 'r')
-    # p.move_to(vec2(280, 80))
-    # p.set_grid(grid)
     
     run = True
         
@@ -50,6 +47,9 @@ def run(board):
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                for p in piece_group.sprites():
+                    p.selected = False
             # if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
             #     pos = pygame.mouse.get_pos()
             #     print(pos)

@@ -17,7 +17,7 @@ class Grid(pygame.sprite.Group):
         for i in range(8):
             r = []
             for j in range(8):
-                t = Tile(self, pygame.Rect(i*self.tile_w, j*self.tile_w, self.tile_w, self.tile_w), self._get_tile_colour(i, j))
+                t = Tile(self, pygame.Rect(j*self.tile_w,i*self.tile_w, self.tile_w, self.tile_w), self._get_tile_colour(i, j))
                 r.append(t)
                 self.surf.blit(t.image, (t.rect.x, t.rect.y))
             tiles.append(r)
@@ -75,7 +75,16 @@ class Tile(pygame.sprite.Sprite):
         x, y = self.global_rect.x, self.global_rect.y
         c = pygame.Color('gray')
         pygame.draw.rect(pygame.display.get_surface(), c, pygame.Rect(x, y, self.rect.w, self.rect.h), width=3)
-        
+    
+    def set_colour(self, colour):
+        self.colour = colour
+        self._draw()
+        pygame.display.get_surface().blit(self.image, self.global_rect)
+    
+    def reset_colour(self):
+        self.colour = self.base_colour
+        self._draw()
+        pygame.display.get_surface().blit(self.image, self.global_rect)
     
     def update(self, events):
         super().update()

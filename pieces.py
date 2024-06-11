@@ -1,7 +1,7 @@
 import pygame
 import os
 from spritesheet import SpriteSheet
-from utils import cursor_state
+from utils import cursor_state, Globals
 
 PATH = os.path.dirname(__file__)
 
@@ -48,6 +48,8 @@ class Piece(pygame.sprite.Sprite):
         pygame.draw.rect(self.image, colour, pygame.Rect(0, 0, self.rect.width, self.rect.height), width=width)
     
     def update(self, events):
+        if self.selected and self.grid:
+            self.grid.tiles[self.i][self.j].set_colour(Globals.COLOR_SELECT)
         for ev in events:
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 pos = pygame.mouse.get_pos()
