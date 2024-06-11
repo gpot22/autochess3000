@@ -1,6 +1,8 @@
 from stockfish import Stockfish
 import visualizer as vz
 
+stockfish = Stockfish(path="stockfish/stockfish")
+
 def parse_board_state(stockfish_board):
     board = []
     for idx, row in enumerate(stockfish_board.split('\n')[:-2]):
@@ -10,7 +12,11 @@ def parse_board_state(stockfish_board):
     return board
 
 def main():
-    vz.run()
+    stockfish.set_position(["e2e4", "e7e6"])
+    view_as_white = True
+    sf_board = stockfish.get_board_visual(view_as_white)
+    board = parse_board_state(sf_board)
+    vz.run(board)
         
 if __name__ == '__main__':
     main()

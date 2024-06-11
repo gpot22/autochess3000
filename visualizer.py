@@ -25,11 +25,21 @@ def draw_grid(grid):
     scr.blit(grid.surf, grid_offset)
     return grid_offset
 
-def run():
+def load_game(board, grid):
+    for i, row in enumerate(board):
+        for j, piece_id in enumerate(row):
+            if not piece_id: continue
+            p = Piece(piece_group, piece_id)
+            p.set_grid(grid)
+            p.move_to_tile(i, j)
+            
+
+def run(board):
     grid = Grid(TILE_W, grid_offset)
-    p = Piece(piece_group, 'r')
-    p.move_to(vec2(280, 80))
-    p.set_grid(grid)
+    load_game(board, grid)
+    # p = Piece(piece_group, 'r')
+    # p.move_to(vec2(280, 80))
+    # p.set_grid(grid)
     
     run = True
         

@@ -14,7 +14,7 @@ class Piece(pygame.sprite.Sprite):
         spritesheet_image = pygame.image.load(os.path.join(PATH, 'assets/pieces.png'))
         self.spritesheet: SpriteSheet = SpriteSheet(spritesheet_image, self.SPRITE_W)
         self.load_sprite()
-        self.draw_hitbox()
+        # self.draw_hitbox()
         
         self.selected = False
         self.dragging = False
