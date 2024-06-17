@@ -8,9 +8,11 @@ PATH = os.path.dirname(__file__)
 class Piece(pygame.sprite.Sprite):
     SPRITE_W = 300
     
-    def __init__(self, group, piece_id):
+    def __init__(self, group, piece_id, grid=None):
         pygame.sprite.Sprite.__init__(self, group)
         self.piece_id =  piece_id
+        self.grid = grid
+        
         spritesheet_image = pygame.image.load(os.path.join(PATH, 'assets/pieces.png'))
         self.spritesheet: SpriteSheet = SpriteSheet(spritesheet_image, self.SPRITE_W)
         self.load_sprite()
@@ -19,19 +21,20 @@ class Piece(pygame.sprite.Sprite):
         self.selected = False
         self.dragging = False
         
-    # def get_piece_from_id(piece_id):
     
     def set_grid(self, grid):
         self.grid = grid
         self.i = 0
         self.j = 0
+        self.load_sprite()
     
     def is_white(self):
         return self.piece_id.isupper()
         
     def load_sprite(self):
         ORDER = {'r': 0, 'b': 1, 'q': 2, 'k': 3, 'n': 4, 'p': 5}
-        self.image = self.spritesheet.get_image(ORDER[self.piece_id.lower()], self.is_white(), scale=80/300, offset=(2, 50), spacing=(1, 75))
+        scale = 120/self.SPRITE_W if not self.grid else self.grid.tile_w/self.SPRITE_W
+        self.image = self.spritesheet.get_image(ORDER[self.piece_id.lower()], self.is_white(), scale=scale, offset=(2, 50), spacing=(1, 75))
         self.rect = self.image.get_rect()
     
     def move_to(self, pos):
@@ -48,11 +51,11 @@ class Piece(pygame.sprite.Sprite):
         pygame.draw.rect(self.image, colour, pygame.Rect(0, 0, self.rect.width, self.rect.height), width=width)
     
     def update(self, events):
+        pos = pygame.mouse.get_pos()
         if self.selected and self.grid:
             self.grid.tiles[self.i][self.j].set_colour(Globals.COLOR_SELECT)
         for ev in events:
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                pos = pygame.mouse.get_pos()
                 if self.rect.collidepoint(pos):
                     self.selected = True
                     self.dragging = True
@@ -60,13 +63,11 @@ class Piece(pygame.sprite.Sprite):
                     
                 
             if ev.type == pygame.MOUSEMOTION:
-                pos = pygame.mouse.get_pos()
                 if self.dragging:
                     self.rect.center = pos
                     
             
             if ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
-                pos = pygame.mouse.get_pos()
                 if self.dragging:
                     self.dragging = False
                     cursor_state['dragging'] = False
