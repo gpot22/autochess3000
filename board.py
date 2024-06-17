@@ -5,10 +5,12 @@ from components import TextBox
 vec2 = pygame.math.Vector2
 
 class Grid(pygame.sprite.Group):
-    def __init__(self, tile_w, offset):
+    def __init__(self, tile_w, offset, stockfish):
         pygame.sprite.Group.__init__(self)
         self.tile_w = tile_w
         self.offset = offset
+        self.stockfish = stockfish
+        
         self.surf = pygame.Surface((tile_w*8, tile_w*8))
         self.rect = pygame.Rect(self.offset.x, self.offset.y, tile_w*8, tile_w*8)
         self.tiles = self._build()
@@ -44,7 +46,27 @@ class Grid(pygame.sprite.Group):
         letter = chr(j + ord('a'))
         number = f'{8 - i}'
         return f'{letter}{number}'
-        
+    
+    def board_to_fen(self):
+        fen_str = ''
+        spaces = 0
+        for row in self.tiles:
+            for tile in row:
+                if tile.piece is None:
+                    spaces += 1
+                else:
+                    if spaces:
+                        fen_str += str(spaces)
+                        spaces = 0
+                    fen_str += tile.piece.piece_id
+            if spaces:
+                fen_str += str(spaces)
+                spaces = 0
+            fen_str += '/'
+        return fen_str[:-1] + ' w - - 0 20'  # remove extra '/'
+    
+    def sync_stockfish_to_board(self):
+        self.stockfish.set_fen_position(self.board_to_fen())
     def _get_tile_colour(self, i, j):
         return pygame.Color(Globals.COLOR_DARK) if (i+j)%2 else Globals.COLOR_LIGHT
     
@@ -69,6 +91,8 @@ class Tile(pygame.sprite.Sprite):
         self._draw()
         self.hover = False
         self.annotating = False
+        
+        self.piece = None
         
     def _draw(self):
         pygame.draw.rect(self.image, self.colour, pygame.Rect(0, 0, self.rect.w, self.rect.h))

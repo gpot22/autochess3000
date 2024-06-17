@@ -1,11 +1,12 @@
 from stockfish import Stockfish
-import visualizer as vz
+from visualizer import Visualizer
 
 stockfish = Stockfish(path="stockfish/stockfish")
 
 def parse_board_state(stockfish_fen):
     board = []
     rows, meta = stockfish_fen.split(' ', 1)
+    turn_colour, castling, enpassant, halfmove_clock, fullmove_num = meta.split(' ')
     for r in rows.split('/'):
         board.append(''.join([char if not char.isdigit() else ' '*int(char) for char in r]))
     return board
@@ -15,8 +16,9 @@ def main():
     stockfish.get_evaluation()
     fen_board = stockfish.get_fen_position()
     board = parse_board_state(fen_board)
-    print(board)
-    vz.run(board, stockfish)
+    
+    vz = Visualizer(stockfish)
+    vz.run(board)
         
 if __name__ == '__main__':
     main()

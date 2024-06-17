@@ -20,12 +20,14 @@ class Piece(pygame.sprite.Sprite):
         
         self.selected = False
         self.dragging = False
+        self.z = 1
+        
+        self.i = None
+        self.j = None
         
     
     def set_grid(self, grid):
         self.grid = grid
-        self.i = 0
-        self.j = 0
         self.load_sprite()
     
     def is_white(self):
@@ -41,9 +43,14 @@ class Piece(pygame.sprite.Sprite):
         self.rect.x = pos.x
         self.rect.y = pos.y
     
-    def move_to_tile(self, i, j):
+    def move_to_tile(self, i, j, init=False):
+        if not (self.i is None): 
+            self.grid.tiles[self.i][self.j].piece = None
         self.i = i
         self.j = j
+        self.grid.tiles[self.i][self.j].piece = self
+        if not init:
+            self.grid.sync_stockfish_to_board()
         pos = self.grid.ij_to_xy(i, j)
         self.move_to(pos)
 
@@ -75,14 +82,17 @@ class Piece(pygame.sprite.Sprite):
                         self.move_to_tile(*self.grid.xy_to_ij(pos[0], pos[1]))
                     else:
                         self.move_to_tile(self.i, self.j)
-
+        if self.dragging:
+            self.z = 99
+        else:
+            self.z = 1
 class PieceGroup(pygame.sprite.Group):
     def __init__(self):
         pygame.sprite.Group.__init__(self)
         self.surf = pygame.display.get_surface()
     
     def draw_sprites(self):
-        for sprite in self.sprites():
+        for sprite in sorted(self.sprites(), key=lambda s: s.z):
             self.surf.blit(sprite.image, sprite.rect)
         
     

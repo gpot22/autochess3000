@@ -11,7 +11,7 @@ class TextBox(pygame.sprite.Sprite):
     - 2-item list [v, h] => padding for top & bottom set to `v`, padding for left & right set to `h`
     - 4-item list [t, r, b, l] => yes
     '''
-    def __init__(self, txt, font, x=0, y=0, border_w=1, padding=None, txt_colour=pygame.Color('black'), bg_colour=pygame.Color('white'), border_colour=pygame.Color('gray'), group=None):
+    def __init__(self, txt, font, x=0, y=0, border_w=0, border_r=0, padding=None, txt_colour=pygame.Color('black'), bg_colour=pygame.Color('white'), border_colour=pygame.Color('gray'), group=None):
         if isinstance(group, pygame.sprite.Group):
             pygame.sprite.Sprite.__init__(self, group)
         else:
@@ -21,6 +21,7 @@ class TextBox(pygame.sprite.Sprite):
         self.txt = txt
         self.font = font
         self.border_w = border_w
+        self.border_r = border_r
         self.padding = padding
         self.txt_colour = txt_colour
         self.bg_colour = bg_colour
@@ -28,13 +29,16 @@ class TextBox(pygame.sprite.Sprite):
         
         self.update_textbox()
         # self.update_textbox(txt, font, border_w, padding, txt_colour, bg_colour, border_colour)
+        
+        self.offset = vec2(0, 0)
     
         
-    def update_textbox(self, txt=-1, font=-1, border_w=-1, padding=-1, txt_colour=-1, bg_colour=-1, border_colour=-1):
+    def update_textbox(self, txt=-1, font=-1, border_w=-1, border_r=-1, padding=-1, txt_colour=-1, bg_colour=-1, border_colour=-1):
         # update attrs as necessary - idk a better way to do this lol
         if txt != -1: self.txt = txt
         if font != -1: self.font = font
         if border_w != -1: self.border_w = border_w
+        if border_r != -1: self.border_r = border_r
         if padding != -1: self.padding = padding
         if txt_colour != -1: self.txt_colour = txt_colour
         if bg_colour != -1: self.bg_colour = bg_colour
@@ -47,9 +51,10 @@ class TextBox(pygame.sprite.Sprite):
         self.rect.x = self.x
         self.rect.y = self.y
         
-        self.image.fill(self.bg_colour)
+        # self.image.fill(self.bg_colour)
+        pygame.draw.rect(self.image, self.bg_colour, pygame.Rect(0, 0, w, h), border_radius=self.border_r)
         if self.border_w > 0:
-            pygame.draw.rect(self.image, self.border_colour, pygame.Rect(0, 0, w, h), width=self.border_w)
+            pygame.draw.rect(self.image, self.border_colour, pygame.Rect(0, 0, w, h), width=self.border_w, border_radius=self.border_r)
         self.font.render_to(self.image, txt_rect.topleft, self.txt, self.txt_colour)
         
     def move_to(self, x, y):
@@ -131,6 +136,8 @@ class Button(pygame.sprite.Sprite):
         self.hovered = False
         self.on_click_args = ()
         
+        self.offset = vec2(0, 0)
+        
     def set_pos(self, x, y):
         self.rect.x = x
         self.rect.y = y
@@ -161,7 +168,7 @@ class Button(pygame.sprite.Sprite):
         pos = pygame.mouse.get_pos()
         if self.rect.collidepoint(pos):
             self.hovered = True
-            if pygame.mouse.get_pressed()[0] == 1 and not self.clicked:
+            if pygame.mouse.get_pressed()[0] and not self.clicked:
                 self.clicked = True
                 self.click()
         else:
@@ -171,10 +178,77 @@ class Button(pygame.sprite.Sprite):
             self.hover()
         elif not self.clicked:
             self.reset()
+            
+class ToggleSwitch(pygame.sprite.Sprite):
+    def __init__(self, w, h, x=0, y=0, knob_colour=pygame.Color('white'), bg_colour_on=pygame.Color('blue'), bg_colour_off=pygame.Color('black'), group=None):
+        if isinstance(group, pygame.sprite.Group):
+            pygame.sprite.Sprite.__init__(self, group)
+        else:
+            pygame.sprite.Sprite.__init__(self)
+            
+        self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32).convert_alpha()
+        self.rect = self.image.get_rect()
+        self.x = self.rect.x = x
+        self.y = self.rect.y = y
+        self.w = w
+        self.h = h
         
-                    
+        self.knob_colour = knob_colour
+        self.bg_colour_on = bg_colour_on
+        self.bg_colour_off = bg_colour_off
+        
+        self.value = True  # on = True, off = False
+        
+        self.clicked = False
+        self.update_switch()
+        
+        self.offset = vec2(0, 0)
+    
+    def toggle(self):
+        self.value = not self.value
+        self.update_switch()
+        
+    def update_switch(self):
+        bg_colour = self.bg_colour_on if self.value else self.bg_colour_off
+        r = self.h/2
+        knob_r = round(r*0.7)
+        
+        pygame.draw.rect(self.image, bg_colour, pygame.Rect(0, 0, self.w, self.h), border_radius=int(r))
+        knob_pos = (self.w-r, r) if self.value else (r, r)
+        pygame.draw.circle(self.image, self.knob_colour, knob_pos, knob_r)
+        
+    def move_to(self, x, y):
+        self.x = self.rect.x = x
+        self.y = self.rect.y = y
+    
+    def update(self):
+        pos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(pos):
+            if pygame.mouse.get_pressed()[0] and not self.clicked:
+                self.clicked = True
+                self.toggle()
+            elif not pygame.mouse.get_pressed()[0]:
+                self.clicked = False
 
-class ComponentsGroup(pygame.sprite.Group):
+class ComponentDiv:
+    def __init__(self, x=0, y=0):
+        self.x = x
+        self.y = y
+        self.components = []
+            
+        
+    def add_components(self, *components):
+        for c in components:
+            self.components.append(c)
+            c.offset = vec2(self.x, self.y)
+    
+    def move_to(self, x, y):
+        self.x = x
+        self.y = y
+        for c in self.components:
+            c.offset = vec2(x, y)
+
+class ComponentGroup(pygame.sprite.Group):
     def __init__(self):
         pygame.sprite.Group.__init__(self)
         self.surf = pygame.display.get_surface()
@@ -184,4 +258,4 @@ class ComponentsGroup(pygame.sprite.Group):
         
     def draw_sprites(self):
         for sprite in self.sprites():
-            self.surf.blit(sprite.image, sprite.rect)
+            self.surf.blit(sprite.image, sprite.rect.topleft + sprite.offset)
