@@ -44,50 +44,64 @@ class TextBox(pygame.sprite.Sprite):
         if bg_colour != -1: self.bg_colour = bg_colour
         if border_colour != -1: self.border_colour = border_colour
         # update textbox sprite
-        txt_rect = self.get_txt_rect(self.txt, self.font, self.padding)
+        txt_rect = self.get_txt_rect()
         w, h = txt_rect.w, txt_rect.h
         self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32).convert_alpha()
         self.rect = self.image.get_rect()
+        if self.x == 'center':
+            surf = pygame.display.get_surface()
+            self.x = surf.get_size()[0]/2 - txt_rect.w/2
+        if self.y == 'center':
+            surf = pygame.display.get_surface()
+            self.y = surf.get_size()[1]/2 - txt_rect.h/2
         self.rect.x = self.x
         self.rect.y = self.y
         
         # self.image.fill(self.bg_colour)
+        if self.bg_colour == 'transparent':
+            self.bg_colour = pygame.Color(0, 0, 0, 0)
         pygame.draw.rect(self.image, self.bg_colour, pygame.Rect(0, 0, w, h), border_radius=self.border_r)
         if self.border_w > 0:
             pygame.draw.rect(self.image, self.border_colour, pygame.Rect(0, 0, w, h), width=self.border_w, border_radius=self.border_r)
         self.font.render_to(self.image, txt_rect.topleft, self.txt, self.txt_colour)
         
     def move_to(self, x, y):
-        self.x = self.rect.x = x
-        self.y = self.rect.y = y
+        if self.x == 'center':
+            surf = pygame.display.get_surface()
+            self.x = surf.get_size()[0]/2 - self.get_txt_rect().w/2
+        else:
+            self.x = self.rect.x = x
+        if self.y == 'center':
+            surf = pygame.display.get_surface()
+            self.y = surf.get_size()[1]/2 - self.get_txt_rect().h/2
+        else:
+            self.y = self.rect.y = y
 
         
-    def get_txt_rect(self, txt, font, padding):
-        txt_rect = font.get_rect(txt)
+    def get_txt_rect(self):
+        txt_rect = self.font.get_rect(self.txt)
         txt_rect.topleft = vec2(0, 0)
-        if not padding: return txt_rect
-        if len(padding) == 1:  # all
-            txt_rect.w += padding[0]*2
-            txt_rect.h += padding[0]*2
-            txt_rect.x += padding[0]
-            txt_rect.y += padding[0]
-        elif len(padding) == 2:  # top/bottom, left/right
-            txt_rect.w += padding[1]*2
-            txt_rect.h += padding[0]*2
-            txt_rect.x += padding[1]
-            txt_rect.y += padding[0]
-        elif len(padding) == 4: # top right bottom left
-            txt_rect.w += padding[1] + padding[3]
-            txt_rect.h += padding[0] + padding[2]
-            txt_rect.x += padding[3]
-            txt_rect.y += padding[0]
+        p = self.padding
+        if not p: return txt_rect
+        if len(p) == 1:  # all
+            txt_rect.w += p[0]*2
+            txt_rect.h += p[0]*2
+            txt_rect.x += p[0]
+            txt_rect.y += p[0]
+        elif len(p) == 2:  # top/bottom, left/right
+            txt_rect.w += p[1]*2
+            txt_rect.h += p[0]*2
+            txt_rect.x += p[1]
+            txt_rect.y += p[0]
+        elif len(p) == 4: # top right bottom left
+            txt_rect.w += p[1] + p[3]
+            txt_rect.h += p[0] + p[2]
+            txt_rect.x += p[3]
+            txt_rect.y += p[0]
         else:
             raise Exception("You Suck")   
         
         return txt_rect
-    
-    # def force_size(self, w, h, keep_padding=False):
-    #     pass
     
     def num_lines(self, txt):
         return len(txt.split('\n'))
