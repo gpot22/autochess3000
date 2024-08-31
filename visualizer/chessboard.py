@@ -1,5 +1,6 @@
 import pygame
-from utils import Globals, cursor_state
+from styles import Styles
+from cursor import cursor_state
 from components import TextBox
 
 vec2 = pygame.math.Vector2
@@ -13,17 +14,20 @@ class Grid(pygame.sprite.Group):
         
         self.surf = pygame.Surface((tile_w*8, tile_w*8))
         self.rect = pygame.Rect(self.offset.x, self.offset.y, tile_w*8, tile_w*8)
+        self.label_squares = True
         self.tiles = self._build()
+        
     
     def _build(self):
         tiles = []
         for i in range(8):
-            r = []
-            for j in range(8):
-                t = Tile(self, pygame.Rect(j*self.tile_w,i*self.tile_w, self.tile_w, self.tile_w), self._get_tile_colour(i, j))
-                r.append(t)
+            row = []
+            for j in range(8): # one row
+                label = '' if not self.label_squares else f'{chr(j+ord('a'))}{8-i}'
+                t = Tile(self, pygame.Rect(j*self.tile_w,i*self.tile_w, self.tile_w, self.tile_w), self._get_tile_colour(i, j), label)
+                row.append(t)
                 self.surf.blit(t.image, (t.rect.x, t.rect.y))
-            tiles.append(r)
+            tiles.append(row)
         return tiles
 
     def ij_to_xy(self, i, j, centre=False):
@@ -63,24 +67,24 @@ class Grid(pygame.sprite.Group):
                 fen_str += str(spaces)
                 spaces = 0
             fen_str += '/'
-        return fen_str[:-1] + ' w - - 0 20'  # remove extra '/'
+        return fen_str[:-1] + ' w - - 0 20' # remove extra '/', + placeholder metadata
     
     def sync_stockfish_to_board(self):
         self.stockfish.set_fen_position(self.board_to_fen())
     def _get_tile_colour(self, i, j):
-        return pygame.Color(Globals.COLOR_DARK) if (i+j)%2 else Globals.COLOR_LIGHT
+        return pygame.Color(Styles.COLOR_DARK) if (i+j)%2 else Styles.COLOR_LIGHT
     
     def update(self, events):
         super().update(events)
-        for ev in events:
-            if ev.type == pygame.MOUSEMOTION:
-                if self.rect.collidepoint(pygame.mouse.get_pos()):
-                    cursor_state['on_board'] = True
-                else:
-                    cursor_state['on_board'] = False
+    #     for ev in events:
+    #         if ev.type == pygame.MOUSEMOTION:
+    #             if self.rect.collidepoint(pygame.mouse.get_pos()):
+    #                 cursor_state['on_board'] = True
+    #             else:
+    #                 cursor_state['on_board'] = False
 
 class Tile(pygame.sprite.Sprite):
-    def __init__(self, grid, rect, colour):
+    def __init__(self, grid, rect, colour, label=''):
         pygame.sprite.Sprite.__init__(self, grid)
         self.grid = grid
         self.rect = rect
@@ -88,18 +92,22 @@ class Tile(pygame.sprite.Sprite):
         self.base_colour = colour
         self.colour = colour
         self.image = pygame.Surface((self.rect.w, self.rect.w), pygame.SRCALPHA, 32).convert_alpha()
+        self.label = label
         self._draw()
-        self.hover = False
-        self.annotating = False
         
+        self.hover = False
         self.piece = None
         
     def _draw(self):
         pygame.draw.rect(self.image, self.colour, pygame.Rect(0, 0, self.rect.w, self.rect.h))
-    
+        if self.label:
+            tb = TextBox(self.label, Styles.FONTSMALL, padding=[2], txt_colour=pygame.Color('white'), bg_colour='transparent')
+            w, h = tb.rect.w, tb.rect.h
+            self.image.blit(tb.image, (self.rect.w/2-w/2, self.rect.h/2-h/2))
+            
     def show_coords(self):
         x, y = self.global_rect.x, self.global_rect.y
-        tb = TextBox(f'({x},{y})', Globals.FONT0, padding=[5], txt_colour=pygame.Color('purple'))
+        tb = TextBox(f'({x},{y})', Styles.FONT0, padding=[5], txt_colour=pygame.Color('purple'))
         w, h = tb.rect.w, tb.rect.h
         pygame.display.get_surface().blit(tb.image, (x+self.rect.w/2-w/2, y+self.rect.h/2-h/2))
     
@@ -111,7 +119,7 @@ class Tile(pygame.sprite.Sprite):
     # def annotate(self):
     #     x, y = self.global_rect.x, self.global_rect.y
     #     w = self.rect.w
-    #     c = pygame.Color(Globals.COLOR_ANNOTATE)
+    #     c = pygame.Color(Styles.COLOR_ANNOTATE)
     #     pygame.draw.circle(pygame.display.get_surface(), c, vec2(x+w/2, y+w/2), w/2, 3)
     
     def set_colour(self, colour):
@@ -127,7 +135,7 @@ class Tile(pygame.sprite.Sprite):
     def update(self, events):
         super().update()
         if self.hover:
-            self.show_coords()
+            # self.show_coords()
             if cursor_state['dragging']:
                 self.piece_drag_highlight()
         for ev in events:
@@ -138,13 +146,8 @@ class Tile(pygame.sprite.Sprite):
                 else:
                     self.hover = False
 
-            if ev.type == pygame.MOUSEBUTTONDOWN:
-                pos = pygame.mouse.get_pos()
-            if ev.type == pygame.MOUSEBUTTONUP:
-                pos = pygame.mouse.get_pos()
-
 class Annotation(pygame.sprite.Sprite): # TODO
-    def __init__(self, group, grid, colour=Globals.COLOR_ANNOTATE):
+    def __init__(self, group, grid, colour=Styles.COLOR_ANNOTATE):
         pygame.sprite.Sprite.__init__(self, group)
         self.grid = grid
         self.colour = colour

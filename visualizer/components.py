@@ -11,15 +11,16 @@ class TextBox(pygame.sprite.Sprite):
     - 2-item list [v, h] => padding for top & bottom set to `v`, padding for left & right set to `h`
     - 4-item list [t, r, b, l] => yes
     '''
-    def __init__(self, txt, font, x=0, y=0, border_w=0, border_r=0, padding=None, txt_colour=pygame.Color('black'), bg_colour=pygame.Color('white'), border_colour=pygame.Color('gray'), group=None):
+    def __init__(self, txt, font, x=0, y=0, origin='topleft', border_w=0, border_r=0, padding=None, txt_colour=pygame.Color('black'), bg_colour=pygame.Color('white'), border_colour=pygame.Color('gray'), group=None):
         if isinstance(group, pygame.sprite.Group):
             pygame.sprite.Sprite.__init__(self, group)
         else:
             pygame.sprite.Sprite.__init__(self)
-        self.x = x
-        self.y = y
         self.txt = txt
         self.font = font
+        self.x = x
+        self.y = y
+        self.origin = origin
         self.border_w = border_w
         self.border_r = border_r
         self.padding = padding
@@ -48,14 +49,18 @@ class TextBox(pygame.sprite.Sprite):
         w, h = txt_rect.w, txt_rect.h
         self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32).convert_alpha()
         self.rect = self.image.get_rect()
-        if self.x == 'center':
-            surf = pygame.display.get_surface()
-            self.x = surf.get_size()[0]/2 - txt_rect.w/2
-        if self.y == 'center':
-            surf = pygame.display.get_surface()
-            self.y = surf.get_size()[1]/2 - txt_rect.h/2
-        self.rect.x = self.x
-        self.rect.y = self.y
+        self.move_to(self.x, self.y, self.origin)
+        # if self.x == 'center':
+        #     surf = pygame.display.get_surface()
+        #     self.x = surf.get_size()[0]/2
+        # if self.y == 'center':
+        #     surf = pygame.display.get_surface()
+        #     self.y = surf.get_size()[1]/2
+        # if self.origin == 'center':
+        #     self.x -= self.get_txt_rect().w/2
+        #     self.y -= self.get_txt_rect().h/2
+        # self.rect.x = self.x
+        # self.rect.y = self.y
         
         # self.image.fill(self.bg_colour)
         if self.bg_colour == 'transparent':
@@ -65,17 +70,24 @@ class TextBox(pygame.sprite.Sprite):
             pygame.draw.rect(self.image, self.border_colour, pygame.Rect(0, 0, w, h), width=self.border_w, border_radius=self.border_r)
         self.font.render_to(self.image, txt_rect.topleft, self.txt, self.txt_colour)
         
-    def move_to(self, x, y):
+    def move_to(self, x, y, origin='topleft'):
+        self.origin = origin
         if self.x == 'center':
             surf = pygame.display.get_surface()
-            self.x = surf.get_size()[0]/2 - self.get_txt_rect().w/2
+            self.x = surf.get_size()[0]/2
         else:
-            self.x = self.rect.x = x
+            self.x = x
         if self.y == 'center':
             surf = pygame.display.get_surface()
-            self.y = surf.get_size()[1]/2 - self.get_txt_rect().h/2
+            self.y = surf.get_size()[1]/2
         else:
-            self.y = self.rect.y = y
+            self.y = y
+            
+        if origin == 'center':
+            self.x -= self.get_txt_rect().w/2
+            self.y -= self.get_txt_rect().h/2
+        self.rect.x = self.x
+        self.rect.y = self.y
 
         
     def get_txt_rect(self):

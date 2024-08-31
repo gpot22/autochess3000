@@ -1,7 +1,8 @@
 import pygame
 import os
 from spritesheet import SpriteSheet
-from utils import cursor_state, Globals
+from styles import Styles
+from cursor import cursor_state
 
 PATH = os.path.dirname(__file__)
 
@@ -60,14 +61,15 @@ class Piece(pygame.sprite.Sprite):
     def update(self, events):
         pos = pygame.mouse.get_pos()
         if self.selected and self.grid:
-            self.grid.tiles[self.i][self.j].set_colour(Globals.COLOR_SELECT)
+            self.grid.tiles[self.i][self.j].set_colour(Styles.COLOR_SELECT)
         for ev in events:
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 if self.rect.collidepoint(pos):
                     self.selected = True
                     self.dragging = True
                     cursor_state['dragging'] = True
-                    
+            
+            
                 
             if ev.type == pygame.MOUSEMOTION:
                 if self.dragging:
