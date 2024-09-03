@@ -171,6 +171,7 @@ void updateMotorWithPID(int*target) {
     pid[k].evalu(pos[k], target[k], dt, pwr, dir);
     // signal the motor
     setMotor(dir, pwr, phase[k], k);
+    
     int pwr_thresh = 30;
     if (pwr < pwr_thresh) {
       restingCounter++;

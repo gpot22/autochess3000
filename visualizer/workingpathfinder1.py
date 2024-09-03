@@ -27,11 +27,6 @@ legend = {
     TEST: pygame.Color('yellow')
 }
 
-LEFTSIDE0 = '_'
-LEFTSIDE1 = '`'
-RIGHTSIDE0 = 'h'
-RIGHTSIDE1 = 'i'
-
 class Pathfinder:
     def __init__(self, network):
         self.network = network
@@ -49,13 +44,13 @@ class Pathfinder:
         
         count = 0
         open_set = PriorityQueue()          # (f_val, count, node)
-        open_set.put((0, count, self.start_node))
+        open_set.put((0, 0, count, self.start_node))
         came_from = {}
         nodes = self.network.nodes
         
         f_score = {node: float('inf') for row in nodes for node in row}
         g_score = {node: float('inf') for row in nodes for node in row}
-        # time_cost_so_far = {node: float('inf') for row in nodes for node in row}
+        time_cost_so_far = {node: float('inf') for row in nodes for node in row}
         
         # f = g + h; g = 0 so f = h for now
         f_score[self.start_node] = self.h_score(self.start_node.get_pos(), self.end_node.get_pos())
@@ -79,22 +74,22 @@ class Pathfinder:
             
             for neighbour in current_node.neighbours:
                 temp_g_score = g_score[current_node] + 1  # WEIGHT
-                # new_time_cost = time_cost_so_far[current_node] + self.network.time_elapsed_move(current_node, neighbour)
+                new_time_cost = time_cost_so_far[current_node] + self.network.time_elapsed_move(current_node, neighbour)
                 if current_node in came_from:
                     prev_node = came_from[current_node]
-                    # new_time_cost += self.network.time_elapsed_turn(prev_node, current_node, neighbour)
+                    new_time_cost += self.network.time_elapsed_turn(prev_node, current_node, neighbour)
                 if temp_g_score < g_score[neighbour]:
                     came_from[neighbour] = current_node
                     g_score[neighbour] = temp_g_score
                     f_score[neighbour] = temp_g_score + self.h_score(neighbour.get_pos(), self.end_node.get_pos())
                     
-                    # time_cost_so_far[neighbour] = new_time_cost
+                    time_cost_so_far[neighbour] = new_time_cost
                     if neighbour not in open_set_hash:
-                        # if neighbour.is_available_at_time(new_time_cost):
-                        count += 1
-                        open_set.put((f_score[neighbour], count, neighbour))
-                        open_set_hash.add(neighbour)
-                        neighbour.val = OPEN
+                        if neighbour.is_available_at_time(new_time_cost):
+                            count += 1
+                            open_set.put((f_score[neighbour], time_cost_so_far[neighbour], count, neighbour))
+                            open_set_hash.add(neighbour)
+                            neighbour.val = OPEN
             self.draw_network()
             if current_node != self.start_node:
                 neighbour.val = CLOSED
@@ -107,7 +102,7 @@ class Pathfinder:
         
         c = math.sqrt((x2-x1)**2 + (y2-y1)**2)  # distance via pythag
         m = abs(x1-x2) + abs(y1-y2)             # distance via manhattan
-        return c
+        return m
     
     def reconstruct_path(self, came_from, current):
         # current_theta = 0
@@ -129,6 +124,12 @@ class Pathfinder:
             for node in row:
                 node.update(events)
     
+    # def draw_network_nodes(self):
+    #     pass
+    
+    # def draw_network_edges(self):
+    #     pass
+    
     def get_hovered_node(self):
         for row in self.network.nodes:
             for node in row:
@@ -145,124 +146,86 @@ class Pathfinder:
                     node.val = TEST
         return nodes
     
-    def point_to_point(self, x0, y0, x1, y1):
-        dx = x1-x0
-        dy = y1-y0
-        dist = math.sqrt(dx**2 + dy**2)
-        if dx == 0:
-            if dy < 0:
-                theta = 90
-            else:
-                theta = 270
-        elif dy == 0:
-            if dx > 0:
-                theta = 0
-            else:
-                theta = 180
-        else:
-            theta = math.atan(abs(dy/dx)) * 180/math.pi
-            if dy < 0 and dx < 0:
-                theta = 180 - theta
-            elif dy > 0 and dx < 0:
-                theta += 180
-            elif dy > 0 and dx > 0:
-                theta = 360-theta
-        return dist, theta
-    
-    def path_to_instruction(self, car):
+    def path_to_instruction(self, start_theta=0):
         if not self.path_nodes: return
-        self.path_instruction = ""
-        current_theta = car.theta
-        
-        start_node = self.path_nodes[0]
-        dist, theta = self.point_to_point(car.x, car.y, start_node.x, start_node.y)
-        dtheta = theta-current_theta
-        current_theta = theta
-        
-        # dist += 30
-        if dtheta > 180:
-            dtheta -= 360
-        elif dtheta < -180:
-            dtheta += 360
-        if dtheta != 0:
-            self.path_instruction += f"turn{dtheta},"
-        # dist += 30
-        if dist != 0:
-            self.path_instruction += f"go{dist},"
-        
-        self.path_instruction += '!,'
+        current_theta = start_theta
+        # prev_node = self.path_nodes[0]
+        # next_node = self.path_nodes[1]
         dtheta = 0
         fwd_dist = 0
-        mag = False
         for i in range(1, len(self.path_nodes)):
             prev_node = self.path_nodes[i-1]
             next_node = self.path_nodes[i]
-            dist, theta = self.point_to_point(prev_node.x, prev_node.y, next_node.x, next_node.y)
+            # print((prev_node.x, prev_node.y), (next_node.x, next_node.y))
+            dx = next_node.x - prev_node.x
+            dy = next_node.y - prev_node.y
+            dist = math.sqrt(dx**2 + dy**2)
+            if dx == 0:
+                if dy < 0:
+                    theta = 90
+                else:
+                    theta = 270
+            elif dy == 0:
+                if dx > 0:
+                    theta = 0
+                else:
+                    theta = 180
+            else:
+                theta = math.atan(abs(dy/dx)) * 180/math.pi
+                if dy < 0 and dx < 0:
+                    theta += 90
+                elif dy > 0 and dx < 0:
+                    theta += 180
+                elif dy > 0 and dx > 0:
+                    theta += 270
+            
             # if current_theta != theta:
             dtheta = theta - current_theta
             current_theta = theta
             if dtheta != 0:
                 if fwd_dist != 0:
-                    self.path_instruction += f'go{fwd_dist},'
+                    self.path_instruction += f'fwd{fwd_dist},'
                     fwd_dist = 0
-                if mag:
-                    self.path_instruction += 'mag0,'
-                    self.path_instruction += 'go-30,'
-                    mag = False
-                if dtheta > 180:
-                    dtheta -= 360
-                elif dtheta < -180:
-                    dtheta += 360
+                self.path_instruction += 'mag0,'
+                self.path_instruction += 'fwd-30,'
                 self.path_instruction += f'turn{dtheta},'
-                self.path_instruction += 'go30,'
                 self.path_instruction += 'mag1,'
-                mag = True
-            elif not mag:
-                self.path_instruction += 'go30,'
-                self.path_instruction += 'mag1,'
-                mag = True
+                # if fwd_dist != 0:
+                #     # if fwd_dist > 30:
+                #     #     self.path_instruction += f'fwd30,'
+                #     #     self.path_instruction += 'mag1,'
+                #     #     fwd_dist-=30
+                #     if fwd_dist == -30:
+                #         self.path_instruction += 'mag0,'
+                #         self.path_instruction += f'fwd{fwd_dist},'
+                #     elif fwd_dist>30:
+                #         self.path_instruction += f'fwd{fwd_dist-30},'
+                #         self.path_instruction += m
+                        
+                #     fwd_dist = 0
+                # self.path_instruction += f'turn{dtheta},'
+                # self.path_instruction += 'mag1,'
+                # fwd_dist-=30
+                
+            # elif dtheta == last_dtheta == 0:
             fwd_dist += dist
             if i == len(self.path_nodes)-1 and fwd_dist>0:
-                self.path_instruction += f'go{fwd_dist},'
-        
-        self.path_instruction += 'mag0,'
-        self.path_instruction += '!,'
-        end_node = self.path_nodes[-1]
-        dist, theta = self.point_to_point(end_node.x, end_node.y, car.x, car.y)
-        dtheta = theta-current_theta
-        current_theta = theta
-        self.path_instruction += f"go-30,"
-        if dtheta != 0:
-            if dtheta > 180:
-                dtheta -= 360
-            elif dtheta < -180:
-                dtheta += 360
-            self.path_instruction += f"turn{dtheta},"
-        if dist != 0:
-            self.path_instruction += f"go{dist},"
-        final_theta = car.rest_theta-current_theta
-        if final_theta != 0:
-            if final_theta > 180:
-                final_theta -= 360
-            elif final_theta < -180:
-                final_theta += 360
-            self.path_instruction += f"turn{car.rest_theta-current_theta},"
+                self.path_instruction += f'fwd{fwd_dist},'
         
         if self.path_instruction.endswith(','):
             self.path_instruction = self.path_instruction[:-1]
                 
             # theta = 
-        return start_node, end_node
     def update_path_times(self):
-        for i in range(len(self.path_nodes)):
+        for i in range(len(self.nodes)):
             prev_node = None
-            current_node = self.path_nodes[i]
+            current_node = self.nodes[i]
             next_node = None
             if i-1 > 0:
-                prev_node = self.path_nodes[i-1]
+                prev_node = self.nodes[i-1]
                 # current_node.time = prev_node.time + self.network.time_elapsed_move()
-            if i+1 < len(self.path_nodes):
-                next_node = self.path_nodes[i+1]
+            if i+1 < len(self.nodes):
+                next_node = self.nodes[i+1]
             
             if next_node is not None:
                 current_node.time[0] = self.network.time_elapsed_move(current_node, next_node)
@@ -275,16 +238,15 @@ class Pathfinder:
                 current_node.time[0] = current_node.time[1] =  prev_node.time[1]
             
     def update_node_busy_times(self):
-        for node in self.path_nodes:
+        for node in self.nodes:
             nodes_in_range = self.get_nodes_in_radius(node.x, node.y, 105)
             for busy_node in nodes_in_range:
-                busy_node.add_busy_interval(node.time[0], node.time[1])
+                busy_node.add_busy_time(node.time[0], node.time[1])
             
     
-    def display_tick(self, scr=None, my_board=None, bg='white', events=None):
+    def tick(self, scr, my_board=None, bg='white', events=None):
         if events is None:
             events = pygame.event.get()
-            
         if bg != 'transparent':
             scr.fill(bg)
         if my_board is not None:
@@ -293,9 +255,7 @@ class Pathfinder:
         self.network.update_neighbours()
         
         self.update_network(events)
-        
         self.draw_network()
-        
         for ev in events:
             mouse_states = pygame.mouse.get_pressed()
             if ev.type == pygame.QUIT:
@@ -335,25 +295,17 @@ class Pathfinder:
                     self.current_char = END
                 
                 if ev.key == pygame.K_SPACE and not self.started:
-                    pass
-                    # self.find_path()
-                    # self.path_to_instruction(self.car.theta)
-                    # self.update_path_times()
-                    # self.update_node_busy_times()
+                    self.network.update_neighbours()
+                    self.started = True
+                    self.astar()
+                    self.path_to_instruction(self.car.theta)
                     # algorithm(lambda: draw(net0, net1), net0, net1, start, end)
         
         
         
         pygame.display.update()
     
-    def find_path(self):
-        if not self.started:
-            self.network.update_neighbours()
-            self.started = True
-            self.astar()
-            self.started = False
-    
-    def run(self, scr=None, my_board=None):
+    def run(self, scr, my_board=None):
         clock = pygame.time.Clock()
         
         self.start_node = None
@@ -367,7 +319,7 @@ class Pathfinder:
         
         while True:
             
-            self.display_tick(scr, my_board)
+            self.tick(scr, my_board)
             clock.tick(60)
 
 class Network:
@@ -378,7 +330,7 @@ class Network:
         self.update_neighbours_alg = update_neighbours_alg
         self.vel = vel
         self.ang_vel = ang_vel
-        for row in self.nodes:
+        for row in nodes:
             for node in row:
                 node.x += x
                 node.y += y
@@ -418,31 +370,14 @@ class Network:
         udotv = u[0]*v[0] + u[1]*v[1]
         ulen = math.sqrt(u[0]**2 + u[1]**2)
         vlen = math.sqrt(v[0]**2 + v[1]**2)
+        # if ulen*vlen == 0:
+        
+        # else:
         theta = math.acos(udotv/(ulen*vlen)) * 180/math.pi
         print(theta)
         
         return theta/self.ang_vel
-
-    def get_node_at_pos(self, x, y):
-        get_pos_func = lambda node: node.x == x and node.y == y
-        result = list(filter(get_pos_func, (node for row in self.nodes for node in row)))
-        if result:
-            return result[0]
-        return print("AAAAAAAAAAAA")
-    
-    def get_node_at_square(self, square):
-        col, row = square  # e.g. c4
-        zero_col = ord(LEFTSIDE0)
-        offset_x = 25
-        offset_y = 125
-        square_width = 50
         
-        row_num = 8-int(row)
-        col_num = ord(col)-zero_col
-        
-        x = offset_x  + col_num*square_width
-        y = offset_y + row_num*square_width
-        return self.get_node_at_pos(x, y)
     
 class Node_Grid:
     NODE_RADIUS = 7
@@ -505,9 +440,9 @@ class Node:
         self.rect = pygame.Rect(self.x-self.radius, self.y-self.radius, self.radius*2, self.radius*2)
         self.hover = False
         
-        self.time = [0, 0]
+        self.time = 0
         self.neighbours = []
-        self.busy_intervals = []
+        self.busy_times = []
         
     def get_pos(self):
         return self.x, self.y
@@ -523,35 +458,14 @@ class Node:
         return math.sqrt((node.x-self.x)**2 + (node.y-self.y)**2)
     
     def is_available_at_time(self, t):
-        for interval in self.busy_intervals:
-            if t > interval[0] and t < interval[1]:
+        for busy_range in self.busy_times:
+            if t > busy_range[0] and t < busy_range[1]:
                 return False
         return True
     
-    def merge_busy_intervals(self):
-        # Sort intervals based on start values
-        self.busy_intervals.sort(key=lambda x: x[0])
-
-        res = [self.busy_intervals[0]]
-
-        for i in range(1, len(self.busy_intervals)):
-            last = res[-1]
-            curr = self.busy_intervals[i]
-
-            # If current overlaps with the last
-            # merged, merge them
-            if curr[0] <= last[1]:
-                last[1] = max(last[1], curr[1])
-            else:
-                # Add current to the result
-                res.append(curr)
-                
-        self.busy_intervals = res
+    def add_busy_time(self, t0, t1):
+        pass
     
-    def add_busy_interval(self, t0, t1):
-        self.busy_intervals.append([t0, t1])
-        self.merge_busy_intervals()
-                
     def draw(self):
         scr = pygame.display.get_surface()
         pygame.draw.aacircle(scr, legend[self.val], (self.x, self.y), self.radius)
@@ -590,7 +504,7 @@ def main():
     node_grid_outer = Node_Grid(100, 100, 9, 9, 50, pygame.Color('black'))
     node_grid_inner = Node_Grid(125, 125, 8, 8, 50, pygame.Color('blue'))
     nodes = node_grid_outer.nodes + node_grid_inner.nodes
-    network = Network(0, 0, nodes, lambda: update_neighbours(node_grid_outer, node_grid_inner), 0, 0)
+    network = Network(0, 0, nodes, lambda: update_neighbours(node_grid_outer, node_grid_inner), 50, pygame.Color('black'))
     pathfinder = Pathfinder(network)
     my_board = chessboard.Grid(50, vec2(100, 100), None)
     pathfinder.run(scr, my_board=my_board)

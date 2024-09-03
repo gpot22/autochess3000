@@ -50,14 +50,14 @@ class Simulator:
         
         piece_outline0 = PieceOutline(125, 125, pygame.Color('orange'))
         piece_outline1 = PieceOutline(450, 450, pygame.Color('cyan'))
-        car0 = Car(100, 100, 0, (-30, 0), piece_outline0)
-        car1 = Car(500, 100, 180, (-30, 0), piece_outline1)
+        car0 = Car(155, 125, 0, (-30, 0), piece_outline0)
+        car1 = Car(420, 450, 180, (-30, 0), piece_outline1)
         
         node_grid_outer = Node_Grid(25, 125, 8, 12, 50, pygame.Color('black'))
         node_grid_inner = Node_Grid(50, 150, 7, 11, 50, pygame.Color('blue'))
         nodes = node_grid_outer.nodes + node_grid_inner.nodes
-        network0 = Network(0, 0, nodes, lambda: update_neighbours(node_grid_outer, node_grid_inner), car0.vel, car0.ang_vel)
-        pathfinder0 = Pathfinder(network0)
+        network = Network(0, 0, nodes, lambda: update_neighbours(node_grid_outer, node_grid_inner), car0.vel, car0.ang_vel)
+        pathfinder0 = Pathfinder(network)
         
         node_grid_outer1 = Node_Grid(25, 125, 8, 12, 50, pygame.Color('black'))
         node_grid_inner1 = Node_Grid(50, 150, 7, 11, 50, pygame.Color('blue'))
@@ -74,8 +74,6 @@ class Simulator:
         layer = 0
         pathfinders = [pathfinder0, pathfinder1]
         cars = [car0, car1]
-        
-        temp_start_time = 0
         while run:
             self.scr.fill(pygame.Color('white')) # BG
             events = pygame.event.get()
@@ -152,8 +150,6 @@ class Simulator:
                         the_car.fwd()
                     else:
                         the_car.bkwd()
-                elif the_car.waiting:
-                    the_car.wait()
             # if car0.turning:
             #     car0.turn()
             # elif car0.moving:
@@ -162,144 +158,20 @@ class Simulator:
             #     else:
             #         car0.bkwd()
                 
-            pathfinders[layer].display_tick(self.scr, bg='transparent', events=events)
+            pathfinders[layer].tick(self.scr, bg='transparent', events=events)
             
             for ev in events:
                 if ev.type == pygame.KEYDOWN:
                     if ev.key == pygame.K_SPACE:
                         if pathfinders[layer].start_node is not None and pathfinders[layer].end_node is not None:
-                            self.captured_piece_pathfind(pathfinders, cars, layer) 
-                            # cars[layer].ready = True
-                            # print(pathfinders[layer].path_instruction)
-                            # cars[layer].instructions = pathfinders[layer].path_instruction
-                            
-            
-            # t_elapsed = (time.perf_counter_ns()-temp_start_time)/(10**9)
-            # if temp_start_time != 0:
-            #     for row in pathfinder0.network.nodes:
-            #         for node in row:
-            #             if node.is_available_at_time(t_elapsed):
-            #                 node.val = ' '
-            #             else:
-            #                 node.val = 'T'
+                            cars[layer].ready = True
+                            print(pathfinders[layer].path_instruction)
+                            cars[layer].instructions = pathfinders[layer].path_instruction
             
             pygame.display.update()
             self.clock.tick(self.FPS)
             
-    def captured_piece_pathfind(self, pathfinders, cars, layer):
-        other_layer = int(not layer)
-        
-        
-        # drawn start node = attacking piece
-        # drawn end node = captured piece
-        attacking_piece_pathfinder = pathfinders[layer]
-        captured_piece_pathfinder = pathfinders[other_layer]
-        
-        # location of captured piece
-        x0 = attacking_piece_pathfinder.end_node.x
-        y0 = attacking_piece_pathfinder.end_node.y
-        # dist_to_car0 = math.sqrt((cars[0].x-x0)**2 + (cars[0].y-y0)**2)
-        # dist_to_car1 = math.sqrt((cars[1].x-x0)**2 + (cars[1].y-y0)**2)
-        
-        dist_to_car0 = abs(cars[0].x-x0)
-        dist_to_car1 = abs(cars[1].x-x0)
-        if dist_to_car0 < dist_to_car1:
-            attacking_piece_car = cars[1]
-            captured_piece_car = cars[0]
-        else:
-            attacking_piece_car = cars[0]
-            captured_piece_car = cars[1]
-            
-        if captured_piece_pathfinder.start_node is not None:
-            captured_piece_pathfinder.start_node.val = ' '
-        if captured_piece_pathfinder.end_node is not None:
-            captured_piece_pathfinder.end_node.val = ' '
-        
-        captured_piece_pathfinder.start_node = captured_piece_pathfinder.network.get_node_at_pos(
-            attacking_piece_pathfinder.end_node.x, attacking_piece_pathfinder.end_node.y)
-        
-        captured_piece_pathfinder.end_node = captured_piece_pathfinder.network.get_node_at_square('i2')
-        
-        attacking_piece_pathfinder.find_path()
-        captured_piece_pathfinder.find_path()
-        
-        atk_start, atk_end = attacking_piece_pathfinder.path_to_instruction(attacking_piece_car)
-        capt_start, capt_end = captured_piece_pathfinder.path_to_instruction(captured_piece_car)
-        
-        attacking_piece_car.ready = True
-        attacking_piece_car.instructions = attacking_piece_pathfinder.path_instruction
-        attacking_piece_car.update_time_data()
-        # print(attacking_piece_car.instructions)
-        print(attacking_piece_car.time_data)
-        captured_piece_car.ready = True
-        captured_piece_car.instructions = captured_piece_pathfinder.path_instruction
-        captured_piece_car.update_time_data()
-        # print(captured_piece_car.instructions)
-        
-        
-        
-        done = False
-        time_step = 0.1
-        
-        total_time_elapsed = min(attacking_piece_car.time_data[-1], captured_piece_car.time_data[-1])
-        
-        while not done:
-            
-            print('aa')
-            done = True
-            attempts = 0
-            time_elapsed = 0
-            wait_time = 0
-            saved_attacking_piece_car_instructions = attacking_piece_car.instructions
-            
-            while time_elapsed < total_time_elapsed:
-                x0, y0 = attacking_piece_car.get_pos_at_time(time_elapsed)
-                x1, y1 = captured_piece_car.get_pos_at_time(time_elapsed)
-                dist = ((x1-x0)**2+(y1-y0)**2)**0.5
-                car_diameter = 100
-                if dist < car_diameter + 50:  # collision!!!
-                    wait_time += 0.1
-                    # print('idx, move, val')
-                    # print(f't{time_elapsed}:', attacking_piece_car.get_index_of_instruction_at_time(time_elapsed))
-                elif wait_time > 0:
-                    
-                    idx = attacking_piece_car.get_index_of_instruction_at_time(time_elapsed-wait_time)
-                    while idx >= 0:
-                        instruction_list = attacking_piece_car.instructions.split(',')
-                        instruction_list.insert(idx, f'wait{wait_time}')
-                    # while idx >= 0:
-                        
-                    #     instruction_list = attacking_piece_car.instructions.split(',')
-                    #     if instruction_list[idx].startswith('go') and (idx==0 or not instruction_list[idx-1].startswith('wait')):
-                    #         instruction_list.insert(idx, f'wait{wait_time}')
-                    #         attacking_piece_car.instructions = ','.join(instruction_list)
-                    #         attacking_piece_car.time_data.insert(idx+1, ('wait', wait_time, wait_time))
-                    #         total_time_elapsed += wait_time
-                    #         wait_time = 0
-                    #         saved_wait_time = wait_time
-                            
-                    #         break
-                    #     elif instruction_list[idx-1].startswith('wait'):
-                    #         val = instruction_list[idx-1][4:]
-                    #         if val == '0':
-                    #             continue
-                    #         instruction_list[idx-1] = 'wait0'
-                    #         idx-=1
-                    #     else:
-                    #         print('yeet')
-                    #         idx-=1
-                    # else:
-                    #     instruction_list.insert(0, f'wait{saved_wait_time}')
-                    #     time_elapsed += saved_wait_time
-                    #     print("AAAAAAAAAAAAAAAAAAAAAAAAAAAG")
-                    # done = False
-                    # wait_period_count+=1
-                attempts += 1
-                time_elapsed += time_step
-            if wait_time > 0:
-                print('WAIT TIME IS ZERO WHEN IT SHOULDNT BE :)')
-        print(attacking_piece_car.instructions)
-        
+
 class BoundaryRect(pygame.sprite.Sprite):
     def __init__(self, x, y, w, h):
         pygame.sprite.Sprite.__init__(self)
@@ -309,7 +181,7 @@ class BoundaryRect(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
     
-class Car(pygame.sprite.Sprite):
+class Car (pygame.sprite.Sprite):
     DIAMETER = 100 # mm
     RPM = 123  # rotations per minute
     WHEEL_DIAMETER = 21 # mm / rotation
@@ -317,7 +189,6 @@ class Car(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         
         self.theta = theta
-        self.rest_theta = theta
         
         self.image = pygame.Surface((self.DIAMETER, self.DIAMETER), pygame.SRCALPHA, 32).convert_alpha()
         self.rect = self.image.get_rect(center=(int(x), int(y)))
@@ -331,7 +202,6 @@ class Car(pygame.sprite.Sprite):
         
         self.turning = False
         self.moving = False
-        self.waiting = False
         self.ready = False
         
         self.start_time = 0
@@ -355,10 +225,8 @@ class Car(pygame.sprite.Sprite):
         
         # self.instructions = "turn-90,fwd30,turn30,fwd70"
         self.instructions = ""
-        self.time_data = []
         
         self.piece_outline = piece_outline
-        
         
     def _draw(self):
         self.image.fill('white')
@@ -434,16 +302,14 @@ class Car(pygame.sprite.Sprite):
     def start_turn(self, theta):
         if self.turning: return print('aaaaaaa')
         if self.moving: return print('bbbbbbb')
-        if self.waiting: return print('cccccccc')
         self.target_theta = self.theta + theta
         self.turn_dir = theta/abs(theta)
         self.turning = True
         self.start_time = time_in_secs()
     
     def end_turn(self):
-        # print('hi')
-        # self.start_fwd(-self.magnet_offset[0])
-        pass
+        print('hi')
+        self.start_fwd(-self.magnet_offset[0])
         
     def turn(self):
         if (self.theta < self.target_theta and self.turn_dir == 1) or (self.theta > self.target_theta and self.turn_dir == -1):
@@ -467,30 +333,10 @@ class Car(pygame.sprite.Sprite):
         # self._draw()
         # pygame.display.get_surface().blit(self.image, self.rect)
         # pygame.display.update()
-        
-    def start_wait(self, secs):
-        if self.turning: return print('aaaaaaa')
-        if self.moving: return print('bbbbbbb')
-        if self.waiting: return print('cccccccc')
-        
-        self.waiting = True
-        
-        # self.wait_time_elapsed = 0
-        self.target_wait_time = secs
-        self.start_time = time_in_secs()
-        
-    def wait(self):
-        dt = time_in_secs() - self.start_time
-        if dt < self.target_wait_time:
-            print(dt)
-            return
-        self.waiting = False
-        
 
     def start_fwd(self, dist):
         if self.turning: return print('aaaaaaa')
         if self.moving: return print('bbbbbbb')
-        if self.waiting: return print('cccccccc')
         self.moving = True
         self.moving_dir = 1
         self.tracked_dist = 0
@@ -514,7 +360,6 @@ class Car(pygame.sprite.Sprite):
     def start_bkwd(self, dist):
         if self.turning: return print('aaaaaaa')
         if self.moving: return print('bbbbbbb')
-        if self.waiting: return print('cccccccc')
         self.moving = True
         self.moving_dir = -1
         self.tracked_dist = 0
@@ -536,7 +381,7 @@ class Car(pygame.sprite.Sprite):
         self.moving = False
     
     def is_busy(self):
-        return self.turning or self.moving or self.waiting
+        return self.turning or self.moving
     
     def get_magnet_pos(self):
         return self.x+self.magnet_offset[0], self.y+self.magnet_offset[1]
@@ -546,8 +391,8 @@ class Car(pygame.sprite.Sprite):
             val = float(instruction[4:])
             
             self.start_turn(val)
-        elif instruction.startswith('go'):
-            val = float(instruction[2:])
+        elif instruction.startswith('fwd'):
+            val = float(instruction[3:])
             if val < 0:
                 self.start_bkwd(-val)
             else:
@@ -557,6 +402,7 @@ class Car(pygame.sprite.Sprite):
             self.start_bkwd(val)
         elif instruction.startswith('mag'):
             val = int(instruction[3:])
+            print(val)
             if val == 2:
                 if self.magnet_toggled:
                     self.magnet_off()
@@ -566,12 +412,18 @@ class Car(pygame.sprite.Sprite):
                     print('toggled on')
             elif val == 1:
                 self.magnet_on()
-                # print('on')
+                print('on')
             else:
                 self.magnet_off()
-        elif instruction.startswith('wait'):
-            val = float(instruction[4:])
-            self.start_wait(val)
+                print('off')
+            time.sleep(0.5)
+        # elif instruction == 'mag_on':
+        #     self.magnet_on()
+        #     time.sleep(0.5)
+        # elif instruction == 'mag_off':
+        #     self.magnet_off()
+        #     time.sleep(0.5)
+            
     def update(self, events):
         pos = pygame.mouse.get_pos()
         for ev in events:
@@ -608,68 +460,6 @@ class Car(pygame.sprite.Sprite):
         self.piece_outline.remove_from_car()
         self.magnet_toggled = False
         
-    def update_time_data(self):
-        time_data = [('start', 0, (self.x, self.y, self.theta))]
-        time_elapsed = 0
-        for instruction in self.instructions.split(','):
-            t = 0
-            if instruction.startswith('go'):
-                val = float(instruction[2:])
-                time_data.append(('go', t:=abs(val)/self.vel, val))
-            elif instruction.startswith('turn'):
-                val = float(instruction[4:])
-                time_data.append(('turn', t:=abs(val)/self.ang_vel, val))
-            elif instruction.startswith('mag'):
-                time_data.append(('mag', 0, 0))
-            elif instruction.startswith('wait'):
-                val = float(instruction[4:])
-                time_data.append(('wait', t:=val, val))
-            time_elapsed += t
-        time_data.append(time_elapsed)
-        self.time_data = time_data
-        
-    def get_pos_at_time(self, t): # must call update_time_data() for this method to be viable
-        if not self.time_data: return print("no time_data")
-        datum = self.time_data[0]
-        x, y, theta = datum[2]
-        time_elapsed = 0
-        for i in range(1, len(self.time_data)-1):
-            datum = self.time_data[i]
-            if t > time_elapsed and t < time_elapsed + datum[1]:
-                ratio = (t-time_elapsed)/datum[1]
-                if datum[0] == 'go':
-                    x += datum[2]*math.cos(theta*math.pi/180)*ratio
-                    y += datum[2]*-math.sin(theta*math.pi/180)*ratio
-                elif datum[0] == 'turn':
-                    theta += datum[2]*ratio
-                elif datum[0] == 'mag':
-                    pass
-                elif datum[0] == 'wait':
-                    pass
-                return x, y
-            else:
-                if datum[0] == 'go':
-                    x += datum[2]*math.cos(theta*math.pi/180)
-                    y += datum[2]*-math.sin(theta*math.pi/180)
-                elif datum[0] == 'turn':
-                    theta += datum[2]
-                elif datum[0] == 'mag':
-                    pass
-                elif datum[0] == 'wait':
-                    pass
-            time_elapsed += datum[1]
-        
-        return x, y
-        
-    def get_index_of_instruction_at_time(self, t):
-        time_elapsed = 0
-        for i in range(1, len(self.time_data)-1):
-            datum = self.time_data[i]
-            if t > time_elapsed and t < time_elapsed + datum[1]:
-                # return i-1, datum[0], datum[2]
-                return i-1
-            time_elapsed += datum[1]
-    
 class PieceOutline(pygame.sprite.Sprite):
     DIAMETER = 32
     def __init__(self, x, y, colour):
